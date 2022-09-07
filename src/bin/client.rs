@@ -23,23 +23,34 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let client_addr = "0.0.0.0:0".parse::<SocketAddr>()?;
     let mut endpoint = Endpoint::client(client_addr)?;
     endpoint.set_default_client_config(client_cfg);
-    dbg!(&endpoint);
+    // dbg!(&endpoint);
 
     let server_addr = "127.0.0.1:25000".parse::<SocketAddr>()?;
     // Connect to the server passing in the server name which is supposed to be in the server certificate.
     let new_connection = endpoint.connect(server_addr, "localhost")?.await?;
     let NewConnection { connection, .. } = new_connection;
 
-    for i in 0..10 {
-        let (mut send, recv) = connection.open_bi().await?;
+    let mut buf = vec![0; 1_000];
+
+    for i in 0..100 {
+        let (mut send, mut recv) = connection.open_bi().await?;
 
         let msg = format!("test #{}", i);
         send.write_all(msg.as_bytes()).await?;
         send.finish().await?;
 
-        let received = recv.read_to_end(10).await?;
-        let received = std::str::from_utf8(&received[..])?;
-        dbg!(&received);
+        // let received = recv.read_to_end(10).await?;
+
+        match recv.read(&mut buf).await.unwrap() {
+            Some(n) => {
+                let received = std::str::from_utf8(&buf[..n])?;
+                dbg!(&received);
+            }
+            None => continue,
+        };
+
+        use tokio::time::{sleep, Duration};
+        sleep(Duration::from_millis(500)).await;
     }
 
     Ok(())

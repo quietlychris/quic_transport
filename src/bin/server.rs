@@ -1,6 +1,5 @@
 use futures_util::StreamExt;
-use quinn::NewConnection;
-use quinn::{Endpoint, ServerConfig};
+use quinn::{Endpoint, RecvStream, SendStream, ServerConfig};
 use std::error::Error;
 use std::net::SocketAddr;
 use std::{fs::File, io::BufReader};
@@ -16,24 +15,46 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "127.0.0.1:25000".parse::<SocketAddr>().unwrap(),
     )?;
 
-    // Start iterating over incoming connections.
+    let mut connections = Vec::new();
+
     while let Some(conn) = incoming.next().await {
-        let mut connection: NewConnection = conn.await?;
-        dbg!(&connection);
+        let quinn::NewConnection {
+            connection,
+            mut bi_streams,
+            ..
+        } = conn.await?;
 
-        while let Some(Ok((mut send, recv))) = connection.bi_streams.next().await {
-            // Because it is a bidirectional stream, we can both send and receive.
-            let request = recv.read_to_end(100).await?;
-            let msg = std::str::from_utf8(&request[..])?;
-            println!("request: {:?}", msg);
-
-            send.write_all(b"response").await?;
-            send.finish().await?;
-        }
-        // Save connection somewhere, start transferring, receiving data, see DataTransfer tutorial.
+        let handle = tokio::spawn(async move {
+            dbg!(connection.remote_address());
+            let mut buf = vec![0; 1000];
+            while let Some(Ok(stream)) = bi_streams.next().await {
+                process_quic(&connection, stream, &mut buf).await;
+            }
+        });
+        connections.push(handle);
     }
 
     Ok(())
+}
+
+async fn process_quic(
+    connection: &quinn::Connection,
+    stream: (SendStream, RecvStream),
+    buf: &mut Vec<u8>,
+) {
+    let (mut tx, mut rx) = stream;
+
+    match rx.read(buf).await.unwrap() {
+        Some(n) => {
+            let msg = std::str::from_utf8(&buf[..n]).unwrap();
+            println!("msg: {:?}", msg);
+            let reply = format!("got: {} from {}", msg, connection.remote_address());
+            if let Err(e) = tx.write_all(reply.as_bytes()).await {
+                println!("Error: {}", e);
+            };
+        }
+        _ => (),
+    }
 }
 
 pub fn read_certs_from_file(
