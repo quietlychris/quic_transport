@@ -1,4 +1,3 @@
-use futures_util::StreamExt;
 use quinn::{Endpoint, RecvStream, SendStream, ServerConfig};
 use std::error::Error;
 use std::net::SocketAddr;
@@ -47,16 +46,13 @@ async fn process_quic(
 ) {
     let (mut tx, mut rx) = stream;
 
-    match rx.read(buf).await.unwrap() {
-        Some(n) => {
-            let msg = std::str::from_utf8(&buf[..n]).unwrap();
-            println!("msg: {:?}", msg);
-            let reply = format!("got: {} from {}", msg, connection.remote_address());
-            if let Err(e) = tx.write_all(reply.as_bytes()).await {
-                println!("Error: {}", e);
-            };
-        }
-        _ => (),
+    if let Some(n) = rx.read(buf).await.unwrap() {
+        let msg = std::str::from_utf8(&buf[..n]).unwrap();
+        println!("msg: {:?}", msg);
+        let reply = format!("got: {} from {}", msg, connection.remote_address());
+        if let Err(e) = tx.write_all(reply.as_bytes()).await {
+            println!("Error: {}", e);
+        };
     }
 }
 

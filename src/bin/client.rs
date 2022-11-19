@@ -1,4 +1,3 @@
-use quinn::Connection;
 use quinn::{ClientConfig, Endpoint};
 use std::fs::File;
 use std::io::BufReader;
