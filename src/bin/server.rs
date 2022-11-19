@@ -17,15 +17,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut connections = Vec::new();
 
     while let Some(conn) = endpoint.accept().await {
-        /* let quinn::NewConnection {
-            connection,
-            mut bi_streams,
-            ..
-        } = conn.await?;
-        */
         let connection = conn.await?;
-        // let bi_streams = connection.open
-
         let handle = tokio::spawn(async move {
             dbg!(connection.remote_address());
             let mut buf = vec![0; 1000];

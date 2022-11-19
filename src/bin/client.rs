@@ -22,12 +22,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let client_addr = "0.0.0.0:0".parse::<SocketAddr>()?;
     let mut endpoint = Endpoint::client(client_addr)?;
     endpoint.set_default_client_config(client_cfg);
-    // dbg!(&endpoint);
 
     let server_addr = "127.0.0.1:25000".parse::<SocketAddr>()?;
     // Connect to the server passing in the server name which is supposed to be in the server certificate.
     let connection = endpoint.connect(server_addr, "localhost")?.await?;
-    // let Connection { connection, .. } = new_connection;
 
     let mut buf = vec![0; 1_000];
 
@@ -37,8 +35,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let msg = format!("test #{}", i);
         send.write_all(msg.as_bytes()).await?;
         send.finish().await?;
-
-        // let received = recv.read_to_end(10).await?;
 
         match recv.read(&mut buf).await.unwrap() {
             Some(n) => {
