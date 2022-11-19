@@ -10,24 +10,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let server_config = ServerConfig::with_single_cert(certs, key)?;
     dbg!(&server_config);
 
-    let (_endpoint, mut incoming) = Endpoint::server(
+    let endpoint = Endpoint::server(
         server_config,
         "127.0.0.1:25000".parse::<SocketAddr>().unwrap(),
     )?;
 
     let mut connections = Vec::new();
 
-    while let Some(conn) = incoming.next().await {
-        let quinn::NewConnection {
+    while let Some(conn) = endpoint.accept().await {
+        /* let quinn::NewConnection {
             connection,
             mut bi_streams,
             ..
         } = conn.await?;
+        */
+        let connection = conn.await?;
+        // let bi_streams = connection.open
 
         let handle = tokio::spawn(async move {
             dbg!(connection.remote_address());
             let mut buf = vec![0; 1000];
-            while let Some(Ok(stream)) = bi_streams.next().await {
+            while let Ok(stream) = connection.accept_bi().await {
                 process_quic(&connection, stream, &mut buf).await;
             }
         });

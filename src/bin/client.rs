@@ -1,4 +1,4 @@
-use quinn::NewConnection;
+use quinn::Connection;
 use quinn::{ClientConfig, Endpoint};
 use std::fs::File;
 use std::io::BufReader;
@@ -27,8 +27,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let server_addr = "127.0.0.1:25000".parse::<SocketAddr>()?;
     // Connect to the server passing in the server name which is supposed to be in the server certificate.
-    let new_connection = endpoint.connect(server_addr, "localhost")?.await?;
-    let NewConnection { connection, .. } = new_connection;
+    let connection = endpoint.connect(server_addr, "localhost")?.await?;
+    // let Connection { connection, .. } = new_connection;
 
     let mut buf = vec![0; 1_000];
 
